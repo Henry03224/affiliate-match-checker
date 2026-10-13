@@ -221,22 +221,25 @@ analyzeBtn.onclick = async () => {
 
 Compare the REFERENCE product image with the COMPARISON (image or full video).
 
-Analyze ALL of the following:
-1. Visual product match (color, style, logo, shape, overall identity). Ignore background/hands/lighting unless they change product identity.
-2. MATERIAL of the product (fabric type, leather, synthetic, metal, plastic, rubber, wood, etc.). Compare reference vs video/image and note if materials match or differ.
-3. Any visible TEXT in the video/image (captions, overlays, product names, claims, prices, hashtags, watermarks). Note if text matches or conflicts with the product.
+Analyze ALL of the following carefully:
 
-Estimate overall match percentage (0-100) based mainly on product visual similarity, but mention text issues clearly.
+1. Visual product match (color, style, logo, shape, overall identity). Ignore background/hands/lighting unless they change product identity.
+2. MATERIAL of the product (fabric, leather, synthetic, mesh, rubber sole, metal accents, etc.). Compare reference vs video and note differences.
+3. Any visible TEXT (captions, overlays, straps, tags, logos, product names, claims, prices, hashtags, watermarks). Note exact matches or mismatches.
+4. AUTHENTICITY / VIOLATION RISK: Look for signs of replica, close design copy, brand mismatch, missing official logos, inconsistent text on straps/tags, or anything that could trigger TikTok Shop / affiliate violation (counterfeit suspicion, unauthorized branding, misleading product).
+
+Estimate overall match percentage (0-100) based mainly on product visual similarity.
 
 Respond with ONLY valid JSON:
 {
   "match_percentage": 85,
-  "explanation": "Short clear explanation in English or Taglish. Cover product visual match, MATERIAL comparison, AND any text found (or none).",
+  "explanation": "Short clear explanation in English or Taglish. Cover visual match, material, text, and any authenticity concerns.",
   "text_found": "List any important text seen, or 'None'",
-  "text_issues": "Any text that could cause TikTok violation (claims, mismatch, prohibited words) or 'None'"
+  "text_issues": "Any text mismatches or risky claims, or 'None'",
+  "violation_risk": "Low / Medium / High — short reason (e.g. close design copy, logo mismatch, possible replica)"
 }
 
-Be objective. Low score if products are clearly different. Flag risky text.`;
+Be objective and strict on authenticity. High visual match can still have High violation risk.`;
 
   let fileUri = null;
   let fileMime = null;
@@ -344,6 +347,7 @@ Be objective. Low score if products are clearly different. Flag risky text.`;
     let expl = matchData.explanation || text;
     if (matchData.text_found) expl += "\n\nText found: " + matchData.text_found;
     if (matchData.text_issues && matchData.text_issues !== "None") expl += "\n\nText issues: " + matchData.text_issues;
+    if (matchData.violation_risk) expl += "\n\nViolation risk: " + matchData.violation_risk;
     explanationEl.textContent = expl;
     explanationEl.style.whiteSpace = "pre-line";
 
