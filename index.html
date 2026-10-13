@@ -217,21 +217,25 @@ analyzeBtn.onclick = async () => {
   setLoading(true);
   resultDiv.classList.add('hidden');
 
-  const prompt = `You are a precise product matching expert for affiliate marketing.
+  const prompt = `You are a precise affiliate product analyzer for TikTok/Shopee content.
 
-Compare the REFERENCE product image with the COMPARISON image.
+Compare the REFERENCE product image with the COMPARISON (image or full video).
 
-Focus ONLY on the main product (shoes, bag, pants, clothing, beauty item, etc.). Ignore background, model hands, lighting, and camera angle unless they completely change product identity.
+Analyze BOTH:
+1. Visual product match (color, style, logo, shape, material, overall identity). Ignore background/hands/lighting unless they change product identity.
+2. Any visible TEXT in the video/image (captions, overlays, product names, claims, prices, hashtags, watermarks). Note if text matches or conflicts with the product.
 
-Estimate the visual match percentage (0-100).
+Estimate overall match percentage (0-100) based mainly on product visual similarity, but mention text issues clearly.
 
 Respond with ONLY valid JSON:
 {
   "match_percentage": 85,
-  "explanation": "Short clear explanation in English or Taglish. Mention color, style, logo, shape, material."
+  "explanation": "Short clear explanation in English or Taglish. Cover product visual match AND any text found (or none).",
+  "text_found": "List any important text seen, or 'None'",
+  "text_issues": "Any text that could cause TikTok violation (claims, mismatch, prohibited words) or 'None'"
 }
 
-Be objective. If products are clearly different, give a low score.`;
+Be objective. Low score if products are clearly different. Flag risky text.`;
 
   let fileUri = null;
   let fileMime = null;
@@ -336,7 +340,11 @@ Be objective. If products are clearly different, give a low score.`;
 
     const pct = matchData.match_percentage ?? 0;
     percentageEl.textContent = pct;
-    explanationEl.textContent = matchData.explanation || text;
+    let expl = matchData.explanation || text;
+    if (matchData.text_found) expl += "\n\nText found: " + matchData.text_found;
+    if (matchData.text_issues && matchData.text_issues !== "None") expl += "\n\nText issues: " + matchData.text_issues;
+    explanationEl.textContent = expl;
+    explanationEl.style.whiteSpace = "pre-line";
 
     // Animate circle
     const offset = 283 - (283 * Math.min(pct, 100) / 100);
