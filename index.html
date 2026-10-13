@@ -17,7 +17,7 @@
     <h1 class="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
       Affiliate Match Checker
     </h1>
-    <p class="mt-3 text-zinc-400 text-lg">Reference picture vs video/frame — Gemini AI match percentage</p>
+    <p class="mt-3 text-zinc-400 text-lg">Reference picture vs full video or image — Gemini AI match percentage</p>
     <div class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-sm">
       <span class="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
       High match (90%+) can still trigger TikTok violations if product authenticity is questioned
@@ -67,7 +67,7 @@
         </div>
       </label>
       <button id="captureBtn" class="hidden mt-3 w-full bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 rounded-xl text-sm font-medium transition">
-        Capture Current Frame
+        Use Single Frame (optional)
       </button>
     </div>
   </div>
@@ -126,7 +126,7 @@ const errorDiv = document.getElementById('error');
 const canvas = document.getElementById('canvas');
 const scoreCircle = document.getElementById('scoreCircle');
 
-let refBase64 = null, refMime = null, compBase64 = null, compMime = null;
+let refBase64 = null, refMime = null, compBase64 = null, compMime = null, videoFile = null;
 
 function fileToBase64(file) {
   return new Promise((resolve) => {
@@ -158,11 +158,13 @@ compInput.onchange = async (e) => {
   const url = URL.createObjectURL(file);
   compPreview.innerHTML = '';
   if (file.type.startsWith('video/')) {
+    videoFile = file;
     videoPlayer.src = url;
     compPreview.appendChild(videoPlayer);
     captureBtn.classList.remove('hidden');
     compBase64 = null;
   } else {
+    videoFile = null;
     const { base64, mime } = await fileToBase64(file);
     compBase64 = base64;
     compMime = mime;
@@ -210,7 +212,7 @@ analyzeBtn.onclick = async () => {
   const apiKey = apiKeyInput.value.trim();
   if (!apiKey) return showError('Please enter your Gemini API key.');
   if (!refBase64) return showError('Please upload a reference picture.');
-  if (!compBase64) return showError('Please upload a comparison image or capture a video frame.');
+  if (!compBase64 && !videoFile) return showError('Please upload a comparison image or video.');
 
   setLoading(true);
   resultDiv.classList.add('hidden');
@@ -231,14 +233,69 @@ Respond with ONLY valid JSON:
 
 Be objective. If products are clearly different, give a low score.`;
 
+  let fileUri = null;
+  let fileMime = null;
+
+  if (videoFile) {
+    // Upload full video via Gemini Files API
+    btnText.textContent = 'Uploading video...';
+    const startRes = await fetch('https://generativelanguage.googleapis.com/upload/v1beta/files?key=' + encodeURIComponent(apiKey), {
+      method: 'POST',
+      headers: {
+        'X-Goog-Upload-Protocol': 'resumable',
+        'X-Goog-Upload-Command': 'start',
+        'X-Goog-Upload-Header-Content-Length': videoFile.size,
+        'X-Goog-Upload-Header-Content-Type': videoFile.type || 'video/mp4',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ file: { display_name: videoFile.name } })
+    });
+    if (!startRes.ok) throw new Error('Upload start failed: ' + await startRes.text());
+    const uploadUrl = startRes.headers.get('X-Goog-Upload-URL');
+    if (!uploadUrl) throw new Error('No upload URL returned');
+
+    btnText.textContent = 'Uploading video bytes...';
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Length': videoFile.size,
+        'X-Goog-Upload-Offset': '0',
+        'X-Goog-Upload-Command': 'upload, finalize'
+      },
+      body: videoFile
+    });
+    if (!uploadRes.ok) throw new Error('Video upload failed: ' + await uploadRes.text());
+    const uploadData = await uploadRes.json();
+    const fileName = uploadData.file?.name;
+    if (!fileName) throw new Error('No file name from upload');
+
+    // Poll until ACTIVE
+    btnText.textContent = 'Processing video...';
+    let fileInfo;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      const poll = await fetch('https://generativelanguage.googleapis.com/v1beta/' + fileName + '?key=' + encodeURIComponent(apiKey));
+      fileInfo = await poll.json();
+      if (fileInfo.state === 'ACTIVE') break;
+      if (fileInfo.state === 'FAILED') throw new Error('Video processing failed');
+    }
+    if (fileInfo.state !== 'ACTIVE') throw new Error('Video processing timed out');
+    fileUri = fileInfo.uri;
+    fileMime = fileInfo.mimeType || videoFile.type;
+  }
+
+  const parts = [
+    { inline_data: { mime_type: refMime || 'image/jpeg', data: refBase64 } },
+    { text: prompt }
+  ];
+  if (fileUri) {
+    parts.splice(1, 0, { file_data: { mime_type: fileMime, file_uri: fileUri } });
+  } else if (compBase64) {
+    parts.splice(1, 0, { inline_data: { mime_type: compMime || 'image/jpeg', data: compBase64 } });
+  }
+
   const body = {
-    contents: [{
-      parts: [
-        { inline_data: { mime_type: refMime || 'image/jpeg', data: refBase64 } },
-        { inline_data: { mime_type: compMime || 'image/jpeg', data: compBase64 } },
-        { text: prompt }
-      ]
-    }],
+    contents: [{ parts }],
     generationConfig: { temperature: 0.2, maxOutputTokens: 500 }
   };
 
