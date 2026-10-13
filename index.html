@@ -3,72 +3,103 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Affiliate Product Match Checker - Gemini API</title>
+<title>Affiliate Product Match Checker</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  .preview-img { max-height: 300px; object-fit: contain; }
-  .result-box { border-left: 4px solid #10b981; }
+  .preview-box { min-height: 220px; }
+  .score-ring { stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 1s ease; }
 </style>
 </head>
-<body class="bg-gradient-to-br from-slate-100 to-slate-200 min-h-screen p-4 md:p-8">
-<div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
-  <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6">
-    <h1 class="text-3xl font-bold">Affiliate Product Match Checker</h1>
-    <p class="text-indigo-100 mt-1">Gumamit ng Gemini API para sa percentage ng match ng reference picture at video/frame</p>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+<div class="max-w-6xl mx-auto px-4 py-8">
+  <!-- Header -->
+  <div class="text-center mb-10">
+    <h1 class="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+      Affiliate Match Checker
+    </h1>
+    <p class="mt-3 text-zinc-400 text-lg">Reference picture vs video/frame — Gemini AI match percentage</p>
+    <div class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-sm">
+      <span class="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
+      High match (90%+) can still trigger TikTok violations if product authenticity is questioned
+    </div>
   </div>
 
-  <div class="p-6 space-y-6">
-    <!-- API Key -->
-    <div>
-      <label class="block text-sm font-semibold text-gray-700 mb-1">Gemini API Key (AQ. format)</label>
-      <input type="password" id="apiKey" 
-             value=""
-             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-             placeholder="Ilagay ang iyong Gemini API key">
-      <p class="text-xs text-gray-500 mt-1">⚠️ Client-side only. Huwag i-share ang file kung may key. Maaari mong baguhin ang key dito.</p>
-    </div>
-
-    <div class="grid md:grid-cols-2 gap-6">
-      <!-- Reference Image -->
-      <div class="space-y-3">
-        <label class="block text-sm font-semibold text-gray-700">Reference Picture (Produkto)</label>
-        <input type="file" id="refInput" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-        <div id="refPreview" class="border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[200px] flex items-center justify-center bg-gray-50">
-          <span class="text-gray-400 text-sm">Preview ng reference image</span>
-        </div>
-      </div>
-
-      <!-- Comparison / Video -->
-      <div class="space-y-3">
-        <label class="block text-sm font-semibold text-gray-700">Video o Comparison Image</label>
-        <input type="file" id="compInput" accept="image/*,video/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
-        
-        <div id="compPreview" class="border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[220px] flex flex-col items-center justify-center bg-gray-50 gap-3">
-          <span class="text-gray-400 text-sm">Preview ng comparison image o video</span>
-        </div>
-        <button id="captureBtn" class="hidden w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg text-sm font-medium">Capture Current Frame para sa Match</button>
-      </div>
-    </div>
-
-    <button id="analyzeBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-lg transition flex items-center justify-center gap-2">
-      <span id="btnText">Analyze Match Percentage</span>
-      <svg id="spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-    </button>
-
-    <div id="result" class="hidden mt-6 p-6 bg-green-50 result-box rounded-xl">
-      <div class="flex items-baseline gap-3">
-        <span class="text-5xl font-black text-green-600" id="percentage">--</span>
-        <span class="text-2xl font-semibold text-green-700">% Match</span>
-      </div>
-      <p id="explanation" class="mt-3 text-gray-700 leading-relaxed"></p>
-      <div id="rawResponse" class="mt-4 text-xs text-gray-500 bg-white p-3 rounded border overflow-auto max-h-40 hidden"></div>
-    </div>
-
-    <div id="error" class="hidden mt-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm"></div>
+  <!-- API Key -->
+  <div class="mb-8 max-w-xl mx-auto">
+    <label class="block text-sm font-medium text-zinc-300 mb-2">Gemini API Key</label>
+    <input type="password" id="apiKey" placeholder="AQ.xxxxxxxx..." 
+           class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+    <p class="text-xs text-zinc-500 mt-2">Client-side only. Never share your key.</p>
   </div>
+
+  <!-- Uploads -->
+  <div class="grid md:grid-cols-2 gap-6 mb-8">
+    <!-- Reference -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-lg">Reference Product</h2>
+        <span class="text-xs px-2.5 py-1 bg-emerald-500/20 text-emerald-300 rounded-full">Image</span>
+      </div>
+      <input type="file" id="refInput" accept="image/*" class="hidden">
+      <label for="refInput" class="block cursor-pointer">
+        <div id="refPreview" class="preview-box border-2 border-dashed border-zinc-700 rounded-xl flex items-center justify-center bg-zinc-950 hover:border-emerald-500/50 transition">
+          <div class="text-center text-zinc-500">
+            <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <p class="text-sm">Upload reference picture</p>
+          </div>
+        </div>
+      </label>
+    </div>
+
+    <!-- Comparison -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-lg">Video / Comparison</h2>
+        <span class="text-xs px-2.5 py-1 bg-cyan-500/20 text-cyan-300 rounded-full">Image or Video</span>
+      </div>
+      <input type="file" id="compInput" accept="image/*,video/*" class="hidden">
+      <label for="compInput" class="block cursor-pointer">
+        <div id="compPreview" class="preview-box border-2 border-dashed border-zinc-700 rounded-xl flex flex-col items-center justify-center bg-zinc-950 hover:border-cyan-500/50 transition gap-3">
+          <div class="text-center text-zinc-500">
+            <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            <p class="text-sm">Upload video or image</p>
+          </div>
+        </div>
+      </label>
+      <button id="captureBtn" class="hidden mt-3 w-full bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 rounded-xl text-sm font-medium transition">
+        Capture Current Frame
+      </button>
+    </div>
+  </div>
+
+  <!-- Analyze Button -->
+  <button id="analyzeBtn" class="w-full max-w-md mx-auto block bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 disabled:from-zinc-700 disabled:to-zinc-700 text-black font-bold py-4 rounded-2xl text-lg transition shadow-lg shadow-emerald-500/20">
+    <span id="btnText">Analyze Match</span>
+    <svg id="spinner" class="hidden inline ml-2 animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+  </button>
+
+  <!-- Result -->
+  <div id="result" class="hidden mt-10 max-w-2xl mx-auto">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center">
+      <div class="relative inline-flex items-center justify-center mb-6">
+        <svg class="w-40 h-40" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45" stroke="#27272a" stroke-width="8" fill="none"/>
+          <circle id="scoreCircle" class="score-ring" cx="50" cy="50" r="45" stroke="#10b981" stroke-width="8" fill="none" stroke-linecap="round" transform="rotate(-90 50 50)"/>
+        </svg>
+        <div class="absolute">
+          <span id="percentage" class="text-5xl font-black">--</span>
+          <span class="text-xl text-zinc-400">%</span>
+        </div>
+      </div>
+      <p id="explanation" class="text-zinc-300 leading-relaxed text-left max-w-lg mx-auto"></p>
+      <div id="complianceNote" class="mt-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-sm text-left">
+        <strong>TikTok Note:</strong> Even a high match score does not guarantee no violation. TikTok may flag content based on product authenticity, claims, or other policies. Always follow affiliate guidelines.
+      </div>
+      <div id="rawResponse" class="mt-4 text-xs text-zinc-500 bg-zinc-950 p-3 rounded-lg overflow-auto max-h-32 hidden"></div>
+    </div>
+  </div>
+
+  <div id="error" class="hidden mt-6 max-w-md mx-auto p-4 bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl text-sm text-center"></div>
 </div>
 
 <canvas id="canvas" class="hidden"></canvas>
@@ -80,7 +111,7 @@ const compInput = document.getElementById('compInput');
 const refPreview = document.getElementById('refPreview');
 const compPreview = document.getElementById('compPreview');
 const videoPlayer = document.createElement('video');
-videoPlayer.className = 'w-full max-h-[280px] rounded-lg object-contain';
+videoPlayer.className = 'w-full max-h-[260px] rounded-lg object-contain';
 videoPlayer.controls = true;
 videoPlayer.playsInline = true;
 const captureBtn = document.getElementById('captureBtn');
@@ -93,212 +124,170 @@ const explanationEl = document.getElementById('explanation');
 const rawResponse = document.getElementById('rawResponse');
 const errorDiv = document.getElementById('error');
 const canvas = document.getElementById('canvas');
+const scoreCircle = document.getElementById('scoreCircle');
 
-let refBase64 = null;
-let refMime = null;
-let compBase64 = null;
-let compMime = null;
+let refBase64 = null, refMime = null, compBase64 = null, compMime = null;
 
 function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result.split(',')[1];
       resolve({ base64, mime: file.type });
     };
-    reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
-function showPreview(container, src, isVideo = false) {
-  container.innerHTML = '';
-  if (isVideo) {
-    // handled separately
-    return;
-  }
+refInput.onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const { base64, mime } = await fileToBase64(file);
+  refBase64 = base64;
+  refMime = mime;
   const img = document.createElement('img');
-  img.src = src;
-  img.className = 'preview-img mx-auto rounded';
-  container.appendChild(img);
-}
+  img.src = URL.createObjectURL(file);
+  img.className = 'max-h-[200px] mx-auto rounded-lg object-contain';
+  refPreview.innerHTML = '';
+  refPreview.appendChild(img);
+};
 
-refInput.addEventListener('change', async (e) => {
+compInput.onchange = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const url = URL.createObjectURL(file);
-  showPreview(refPreview, url);
-  const data = await fileToBase64(file);
-  refBase64 = data.base64;
-  refMime = data.mime;
-});
-
-compInput.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const url = URL.createObjectURL(file);
-
   compPreview.innerHTML = '';
-
   if (file.type.startsWith('video/')) {
     videoPlayer.src = url;
-    videoPlayer.load();
     compPreview.appendChild(videoPlayer);
     captureBtn.classList.remove('hidden');
     compBase64 = null;
-    // Auto play hint
-    videoPlayer.play().catch(() => {});
   } else {
+    const { base64, mime } = await fileToBase64(file);
+    compBase64 = base64;
+    compMime = mime;
+    const img = document.createElement('img');
+    img.src = url;
+    img.className = 'max-h-[200px] mx-auto rounded-lg object-contain';
+    compPreview.appendChild(img);
     captureBtn.classList.add('hidden');
-    showPreview(compPreview, url);
-    const data = await fileToBase64(file);
-    compBase64 = data.base64;
-    compMime = data.mime;
   }
-});
+};
 
-captureBtn.addEventListener('click', () => {
-  if (!videoPlayer.videoWidth) {
-    showError('Mag-play muna ng video bago mag-capture ng frame.');
-    return;
-  }
+captureBtn.onclick = () => {
+  if (!videoPlayer.videoWidth) return;
   canvas.width = videoPlayer.videoWidth;
   canvas.height = videoPlayer.videoHeight;
   const ctx = canvas.getContext('2d');
-  ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-  
-  // Show the captured frame in preview but keep video accessible
-  const img = document.createElement('img');
-  img.src = dataUrl;
-  img.className = 'preview-img mx-auto rounded mt-2';
-  // Clear and re-add video + frame
-  compPreview.innerHTML = '';
-  compPreview.appendChild(videoPlayer);
-  const frameLabel = document.createElement('div');
-  frameLabel.className = 'text-xs text-green-600 font-medium mt-1';
-  frameLabel.textContent = '✓ Captured frame (ito ang gagamitin sa match)';
-  compPreview.appendChild(frameLabel);
-  compPreview.appendChild(img);
+  ctx.drawImage(videoPlayer, 0, 0);
+  canvas.toBlob(async (blob) => {
+    const { base64, mime } = await fileToBase64(blob);
+    compBase64 = base64;
+    compMime = 'image/jpeg';
+    const img = document.createElement('img');
+    img.src = canvas.toDataURL('image/jpeg');
+    img.className = 'max-h-[200px] mx-auto rounded-lg object-contain';
+    compPreview.innerHTML = '';
+    compPreview.appendChild(img);
+    captureBtn.classList.add('hidden');
+  }, 'image/jpeg', 0.9);
+};
 
-  compBase64 = dataUrl.split(',')[1];
-  compMime = 'image/jpeg';
-});
-
-function setLoading(loading) {
-  analyzeBtn.disabled = loading;
-  btnText.textContent = loading ? 'Analyzing...' : 'Analyze Match Percentage';
-  spinner.classList.toggle('hidden', !loading);
+function setLoading(on) {
+  analyzeBtn.disabled = on;
+  btnText.textContent = on ? 'Analyzing...' : 'Analyze Match';
+  spinner.classList.toggle('hidden', !on);
 }
 
-analyzeBtn.addEventListener('click', async () => {
-  errorDiv.classList.add('hidden');
+function showError(msg) {
+  errorDiv.textContent = msg;
+  errorDiv.classList.remove('hidden');
   resultDiv.classList.add('hidden');
+}
 
+analyzeBtn.onclick = async () => {
+  errorDiv.classList.add('hidden');
   const apiKey = apiKeyInput.value.trim();
-  if (!apiKey) {
-    showError('Ilagay muna ang Gemini API key.');
-    return;
-  }
-  if (!refBase64) {
-    showError('Mag-upload muna ng reference picture.');
-    return;
-  }
-  if (!compBase64) {
-    showError('Mag-upload ng comparison image o mag-capture ng frame mula sa video.');
-    return;
-  }
+  if (!apiKey) return showError('Please enter your Gemini API key.');
+  if (!refBase64) return showError('Please upload a reference picture.');
+  if (!compBase64) return showError('Please upload a comparison image or capture a video frame.');
 
   setLoading(true);
+  resultDiv.classList.add('hidden');
 
-  const prompt = `You are an expert visual product matching assistant for affiliate marketing (TikTok, Facebook, Shopee, etc.).
+  const prompt = `You are a precise product matching expert for affiliate marketing.
 
-Compare the TWO images carefully:
-1. First image = Reference product image (the ideal/official product photo).
-2. Second image = Comparison image (could be a screenshot or frame from a video of the product).
+Compare the REFERENCE product image with the COMPARISON image.
 
-Focus ONLY on the main product (shoes, bag, pants, clothing, beauty item, etc.). Ignore background, model hands, lighting differences, and camera angle as much as possible unless they completely change the product identity.
+Focus ONLY on the main product (shoes, bag, pants, clothing, beauty item, etc.). Ignore background, model hands, lighting, and camera angle unless they completely change product identity.
 
-Estimate the visual match percentage (0-100) of how well the product in the comparison image matches the reference product.
+Estimate the visual match percentage (0-100).
 
-Respond with ONLY valid JSON in this exact format:
+Respond with ONLY valid JSON:
 {
   "match_percentage": 85,
-  "explanation": "Short clear explanation in English or Taglish why the score is that high/low. Mention color, style, logo, shape, material, etc."
+  "explanation": "Short clear explanation in English or Taglish. Mention color, style, logo, shape, material."
 }
 
-Be objective and precise. If products are clearly different, give low score.`;
+Be objective. If products are clearly different, give a low score.`;
 
   const body = {
     contents: [{
       parts: [
-        {
-          inline_data: {
-            mime_type: refMime || 'image/jpeg',
-            data: refBase64
-          }
-        },
-        {
-          inline_data: {
-            mime_type: compMime || 'image/jpeg',
-            data: compBase64
-          }
-        },
+        { inline_data: { mime_type: refMime || 'image/jpeg', data: refBase64 } },
+        { inline_data: { mime_type: compMime || 'image/jpeg', data: compBase64 } },
         { text: prompt }
       ]
     }],
-    generationConfig: {
-      temperature: 0.2,
-      maxOutputTokens: 500
-    }
+    generationConfig: { temperature: 0.2, maxOutputTokens: 500 }
   };
 
-  try {
-    const models = ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-3.8-flash"];
-    let response, lastError;
-    for (const model of models) {
-      try {
-        response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': apiKey
-            },
-            body: JSON.stringify(body)
-          }
-        );
-        if (response.ok) break;
-        const errText = await response.text();
-        lastError = new Error(`API Error ${response.status} on ${model}: ${errText}`);
-        if (response.status !== 503) break; // only fallback on 503
-      } catch (e) {
-        lastError = e;
-      }
-    }
-    if (!response || !response.ok) {
-      throw lastError || new Error("All models failed");
-    }
+  const models = ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-3.8-flash"];
+  let response, lastError;
+  for (const model of models) {
+    try {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify(body)
+        }
+      );
+      if (response.ok) break;
+      const errText = await response.text();
+      lastError = new Error(`API Error ${response.status} on ${model}: ${errText}`);
+      if (response.status !== 503) break;
+    } catch (e) { lastError = e; }
+  }
 
+  if (!response || !response.ok) {
+    setLoading(false);
+    return showError(lastError?.message || 'All models failed. Try again later.');
+  }
+
+  try {
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    // Try to extract JSON
     let matchData;
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       matchData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(text);
-    } catch (e) {
-      // fallback
-      matchData = {
-        match_percentage: 'N/A',
-        explanation: text || 'Hindi ma-parse ang response. Raw output below.'
-      };
+    } catch {
+      matchData = { match_percentage: 'N/A', explanation: text || 'Could not parse response.' };
     }
 
-    percentageEl.textContent = matchData.match_percentage ?? '--';
+    const pct = matchData.match_percentage ?? 0;
+    percentageEl.textContent = pct;
     explanationEl.textContent = matchData.explanation || text;
+
+    // Animate circle
+    const offset = 283 - (283 * Math.min(pct, 100) / 100);
+    scoreCircle.style.strokeDashoffset = offset;
+    if (pct >= 90) scoreCircle.setAttribute('stroke', '#10b981');
+    else if (pct >= 70) scoreCircle.setAttribute('stroke', '#f59e0b');
+    else scoreCircle.setAttribute('stroke', '#ef4444');
+
     rawResponse.textContent = text;
     rawResponse.classList.remove('hidden');
     resultDiv.classList.remove('hidden');
@@ -307,12 +296,7 @@ Be objective and precise. If products are clearly different, give low score.`;
   } finally {
     setLoading(false);
   }
-});
-
-function showError(msg) {
-  errorDiv.textContent = msg;
-  errorDiv.classList.remove('hidden');
-}
+};
 </script>
 </body>
 </html>
