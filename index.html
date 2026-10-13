@@ -1,1 +1,308 @@
-PLACEHOLDER_TEST
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Affiliate Product Match Checker - Gemini API</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .preview-img { max-height: 300px; object-fit: contain; }
+  .result-box { border-left: 4px solid #10b981; }
+</style>
+</head>
+<body class="bg-gradient-to-br from-slate-100 to-slate-200 min-h-screen p-4 md:p-8">
+<div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+  <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6">
+    <h1 class="text-3xl font-bold">Affiliate Product Match Checker</h1>
+    <p class="text-indigo-100 mt-1">Gumamit ng Gemini API para sa percentage ng match ng reference picture at video/frame</p>
+  </div>
+
+  <div class="p-6 space-y-6">
+    <!-- API Key -->
+    <div>
+      <label class="block text-sm font-semibold text-gray-700 mb-1">Gemini API Key (AQ. format)</label>
+      <input type="password" id="apiKey" 
+             value=""
+             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+             placeholder="Ilagay ang iyong Gemini API key">
+      <p class="text-xs text-gray-500 mt-1">⚠️ Client-side only. Huwag i-share ang file kung may key. Maaari mong baguhin ang key dito.</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <!-- Reference Image -->
+      <div class="space-y-3">
+        <label class="block text-sm font-semibold text-gray-700">Reference Picture (Produkto)</label>
+        <input type="file" id="refInput" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+        <div id="refPreview" class="border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[200px] flex items-center justify-center bg-gray-50">
+          <span class="text-gray-400 text-sm">Preview ng reference image</span>
+        </div>
+      </div>
+
+      <!-- Comparison / Video -->
+      <div class="space-y-3">
+        <label class="block text-sm font-semibold text-gray-700">Video o Comparison Image</label>
+        <input type="file" id="compInput" accept="image/*,video/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+        
+        <div id="compPreview" class="border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[220px] flex flex-col items-center justify-center bg-gray-50 gap-3">
+          <span class="text-gray-400 text-sm">Preview ng comparison image o video</span>
+        </div>
+        <button id="captureBtn" class="hidden w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg text-sm font-medium">Capture Current Frame para sa Match</button>
+      </div>
+    </div>
+
+    <button id="analyzeBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-lg transition flex items-center justify-center gap-2">
+      <span id="btnText">Analyze Match Percentage</span>
+      <svg id="spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    </button>
+
+    <div id="result" class="hidden mt-6 p-6 bg-green-50 result-box rounded-xl">
+      <div class="flex items-baseline gap-3">
+        <span class="text-5xl font-black text-green-600" id="percentage">--</span>
+        <span class="text-2xl font-semibold text-green-700">% Match</span>
+      </div>
+      <p id="explanation" class="mt-3 text-gray-700 leading-relaxed"></p>
+      <div id="rawResponse" class="mt-4 text-xs text-gray-500 bg-white p-3 rounded border overflow-auto max-h-40 hidden"></div>
+    </div>
+
+    <div id="error" class="hidden mt-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm"></div>
+  </div>
+</div>
+
+<canvas id="canvas" class="hidden"></canvas>
+
+<script>
+const apiKeyInput = document.getElementById('apiKey');
+const refInput = document.getElementById('refInput');
+const compInput = document.getElementById('compInput');
+const refPreview = document.getElementById('refPreview');
+const compPreview = document.getElementById('compPreview');
+const videoPlayer = document.createElement('video');
+videoPlayer.className = 'w-full max-h-[280px] rounded-lg object-contain';
+videoPlayer.controls = true;
+videoPlayer.playsInline = true;
+const captureBtn = document.getElementById('captureBtn');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const btnText = document.getElementById('btnText');
+const spinner = document.getElementById('spinner');
+const resultDiv = document.getElementById('result');
+const percentageEl = document.getElementById('percentage');
+const explanationEl = document.getElementById('explanation');
+const rawResponse = document.getElementById('rawResponse');
+const errorDiv = document.getElementById('error');
+const canvas = document.getElementById('canvas');
+
+let refBase64 = null;
+let refMime = null;
+let compBase64 = null;
+let compMime = null;
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result.split(',')[1];
+      resolve({ base64, mime: file.type });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function showPreview(container, src, isVideo = false) {
+  container.innerHTML = '';
+  if (isVideo) {
+    // handled separately
+    return;
+  }
+  const img = document.createElement('img');
+  img.src = src;
+  img.className = 'preview-img mx-auto rounded';
+  container.appendChild(img);
+}
+
+refInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  showPreview(refPreview, url);
+  const data = await fileToBase64(file);
+  refBase64 = data.base64;
+  refMime = data.mime;
+});
+
+compInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+
+  compPreview.innerHTML = '';
+
+  if (file.type.startsWith('video/')) {
+    videoPlayer.src = url;
+    videoPlayer.load();
+    compPreview.appendChild(videoPlayer);
+    captureBtn.classList.remove('hidden');
+    compBase64 = null;
+    // Auto play hint
+    videoPlayer.play().catch(() => {});
+  } else {
+    captureBtn.classList.add('hidden');
+    showPreview(compPreview, url);
+    const data = await fileToBase64(file);
+    compBase64 = data.base64;
+    compMime = data.mime;
+  }
+});
+
+captureBtn.addEventListener('click', () => {
+  if (!videoPlayer.videoWidth) {
+    showError('Mag-play muna ng video bago mag-capture ng frame.');
+    return;
+  }
+  canvas.width = videoPlayer.videoWidth;
+  canvas.height = videoPlayer.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+  
+  // Show the captured frame in preview but keep video accessible
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.className = 'preview-img mx-auto rounded mt-2';
+  // Clear and re-add video + frame
+  compPreview.innerHTML = '';
+  compPreview.appendChild(videoPlayer);
+  const frameLabel = document.createElement('div');
+  frameLabel.className = 'text-xs text-green-600 font-medium mt-1';
+  frameLabel.textContent = '✓ Captured frame (ito ang gagamitin sa match)';
+  compPreview.appendChild(frameLabel);
+  compPreview.appendChild(img);
+
+  compBase64 = dataUrl.split(',')[1];
+  compMime = 'image/jpeg';
+});
+
+function setLoading(loading) {
+  analyzeBtn.disabled = loading;
+  btnText.textContent = loading ? 'Analyzing...' : 'Analyze Match Percentage';
+  spinner.classList.toggle('hidden', !loading);
+}
+
+analyzeBtn.addEventListener('click', async () => {
+  errorDiv.classList.add('hidden');
+  resultDiv.classList.add('hidden');
+
+  const apiKey = apiKeyInput.value.trim();
+  if (!apiKey) {
+    showError('Ilagay muna ang Gemini API key.');
+    return;
+  }
+  if (!refBase64) {
+    showError('Mag-upload muna ng reference picture.');
+    return;
+  }
+  if (!compBase64) {
+    showError('Mag-upload ng comparison image o mag-capture ng frame mula sa video.');
+    return;
+  }
+
+  setLoading(true);
+
+  const prompt = `You are an expert visual product matching assistant for affiliate marketing (TikTok, Facebook, Shopee, etc.).
+
+Compare the TWO images carefully:
+1. First image = Reference product image (the ideal/official product photo).
+2. Second image = Comparison image (could be a screenshot or frame from a video of the product).
+
+Focus ONLY on the main product (shoes, bag, pants, clothing, beauty item, etc.). Ignore background, model hands, lighting differences, and camera angle as much as possible unless they completely change the product identity.
+
+Estimate the visual match percentage (0-100) of how well the product in the comparison image matches the reference product.
+
+Respond with ONLY valid JSON in this exact format:
+{
+  "match_percentage": 85,
+  "explanation": "Short clear explanation in English or Taglish why the score is that high/low. Mention color, style, logo, shape, material, etc."
+}
+
+Be objective and precise. If products are clearly different, give low score.`;
+
+  const body = {
+    contents: [{
+      parts: [
+        {
+          inline_data: {
+            mime_type: refMime || 'image/jpeg',
+            data: refBase64
+          }
+        },
+        {
+          inline_data: {
+            mime_type: compMime || 'image/jpeg',
+            data: compBase64
+          }
+        },
+        { text: prompt }
+      ]
+    }],
+    generationConfig: {
+      temperature: 0.2,
+      maxOutputTokens: 500
+    }
+  };
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify(body)
+      }
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`API Error ${response.status}: ${errText}`);
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    // Try to extract JSON
+    let matchData;
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      matchData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(text);
+    } catch (e) {
+      // fallback
+      matchData = {
+        match_percentage: 'N/A',
+        explanation: text || 'Hindi ma-parse ang response. Raw output below.'
+      };
+    }
+
+    percentageEl.textContent = matchData.match_percentage ?? '--';
+    explanationEl.textContent = matchData.explanation || text;
+    rawResponse.textContent = text;
+    rawResponse.classList.remove('hidden');
+    resultDiv.classList.remove('hidden');
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    setLoading(false);
+  }
+});
+
+function showError(msg) {
+  errorDiv.textContent = msg;
+  errorDiv.classList.remove('hidden');
+}
+</script>
+</body>
+</html>
