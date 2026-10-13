@@ -221,16 +221,17 @@ analyzeBtn.onclick = async () => {
 
 Compare the REFERENCE product image with the COMPARISON (image or full video).
 
-Analyze BOTH:
-1. Visual product match (color, style, logo, shape, material, overall identity). Ignore background/hands/lighting unless they change product identity.
-2. Any visible TEXT in the video/image (captions, overlays, product names, claims, prices, hashtags, watermarks). Note if text matches or conflicts with the product.
+Analyze ALL of the following:
+1. Visual product match (color, style, logo, shape, overall identity). Ignore background/hands/lighting unless they change product identity.
+2. MATERIAL of the product (fabric type, leather, synthetic, metal, plastic, rubber, wood, etc.). Compare reference vs video/image and note if materials match or differ.
+3. Any visible TEXT in the video/image (captions, overlays, product names, claims, prices, hashtags, watermarks). Note if text matches or conflicts with the product.
 
 Estimate overall match percentage (0-100) based mainly on product visual similarity, but mention text issues clearly.
 
 Respond with ONLY valid JSON:
 {
   "match_percentage": 85,
-  "explanation": "Short clear explanation in English or Taglish. Cover product visual match AND any text found (or none).",
+  "explanation": "Short clear explanation in English or Taglish. Cover product visual match, MATERIAL comparison, AND any text found (or none).",
   "text_found": "List any important text seen, or 'None'",
   "text_issues": "Any text that could cause TikTok violation (claims, mismatch, prohibited words) or 'None'"
 }
