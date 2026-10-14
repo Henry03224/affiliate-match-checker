@@ -238,10 +238,10 @@ Scoring guide:
 
 Be strict on STYLE. If the overall shape, proportions, or design lines differ even slightly, do NOT give above 80. Color match alone is not enough for high score.
 
-IMPORTANT RULES:
-- If any important TEXT or LOGO on the product itself (strap lettering, brand name, tag, printed text, logo) is different, mismatched, or ADDED in the video compared to the reference, the match_percentage MUST be 60 or lower.
-- Added text or logo on the product = automatic max 60% and High violation risk.
-- Text mismatch or extra branding = automatic max 60%.
+CRITICAL RULE (MUST FOLLOW):
+If the video/image shows ANY text, letter, logo, or branding on the product (strap, tag, printed text) that is NOT present or is different from the reference image, you MUST set match_percentage to 60 or lower. 
+Example: Reference has no lettering on strap, video has letters = MUST be 60 or below. Do NOT give 90+ if text was added.
+This overrides visual similarity.
 
 Respond with ONLY valid JSON:
 {
@@ -355,7 +355,16 @@ Be objective and strict on authenticity. High visual match can still have High v
       matchData = { match_percentage: 'N/A', explanation: text || 'Could not parse response.' };
     }
 
-    const pct = matchData.match_percentage ?? 0;
+    let pct = Number(matchData.match_percentage) || 0;
+    // Force max 60 if text mismatch / added text detected
+    const textIssues = (matchData.text_issues || "").toLowerCase();
+    const violation = (matchData.violation_risk || "").toLowerCase();
+    const explanation = (matchData.explanation || "").toLowerCase();
+    if (textIssues.includes("mismatch") || textIssues.includes("added") || textIssues.includes("different") ||
+        violation.includes("high") || explanation.includes("added text") || explanation.includes("letter") || explanation.includes("logo")) {
+      pct = Math.min(pct, 60);
+      matchData.match_percentage = pct;
+    }
     percentageEl.textContent = pct;
     let expl = matchData.explanation || text;
     if (matchData.text_found) expl += "\n\nText found: " + matchData.text_found;
