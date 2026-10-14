@@ -239,9 +239,11 @@ Scoring guide (focus on PRODUCT, not color):
 IMPORTANT: Do NOT be strict on color. Lighting, white balance, shade, or minor color differences should NOT lower the score much if the product style, shape, and design are the same. Focus on the product itself.
 
 CRITICAL RULE (MUST FOLLOW):
-If the video/image shows ANY text, letter, logo, or branding on the product (strap, tag, printed text) that is NOT present or is different from the reference image, you MUST set match_percentage to 60 or lower. 
-Example: Reference has no lettering on strap, video has letters = MUST be 60 or below. Do NOT give 90+ if text was added.
-This overrides visual similarity.
+Only flag text/logo issues if there is CLEAR, readable text or branding on the product itself (large letters, logos, brand names on strap/upper/sole).
+- Small tags, size labels, or tiny unreadable marks should be IGNORED.
+- If reference has no clear text and video has clear added letters/logo → max 60%.
+- If both have similar small tags or no clear text → do NOT lower the score for text.
+Do NOT invent text that is not clearly visible.
 
 Respond with ONLY valid JSON:
 {
@@ -363,10 +365,9 @@ Be objective and strict on authenticity. High visual match can still have High v
     const fullText = (text || "").toLowerCase();
 
     const hasTextIssue = 
-      (textFound && textFound !== "none" && textFound !== "n/a") ||
-      (textIssues && textIssues !== "none" && textIssues !== "n/a") ||
-      violation.includes("high") || violation.includes("medium") ||
-      fullText.includes("letter") || fullText.includes("logo") || fullText.includes("text on") || fullText.includes("strap");
+      (textIssues && textIssues !== "none" && textIssues !== "n/a" && (textIssues.includes("mismatch") || textIssues.includes("added") || textIssues.includes("different"))) ||
+      violation.includes("high") ||
+      fullText.includes("added text") || fullText.includes("extra logo") || fullText.includes("different lettering");
 
     if (hasTextIssue) {
       pct = Math.min(pct, 60);
