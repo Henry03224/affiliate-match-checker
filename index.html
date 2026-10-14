@@ -356,14 +356,24 @@ Be objective and strict on authenticity. High visual match can still have High v
     }
 
     let pct = Number(matchData.match_percentage) || 0;
-    // Force max 60 if text mismatch / added text detected
-    const textIssues = (matchData.text_issues || "").toLowerCase();
+    // Aggressive force: any text found or high risk = max 60
+    const textFound = (matchData.text_found || "").toLowerCase().trim();
+    const textIssues = (matchData.text_issues || "").toLowerCase().trim();
     const violation = (matchData.violation_risk || "").toLowerCase();
-    const explanation = (matchData.explanation || "").toLowerCase();
-    if (textIssues.includes("mismatch") || textIssues.includes("added") || textIssues.includes("different") ||
-        violation.includes("high") || explanation.includes("added text") || explanation.includes("letter") || explanation.includes("logo")) {
+    const fullText = (text || "").toLowerCase();
+
+    const hasTextIssue = 
+      (textFound && textFound !== "none" && textFound !== "n/a") ||
+      (textIssues && textIssues !== "none" && textIssues !== "n/a") ||
+      violation.includes("high") || violation.includes("medium") ||
+      fullText.includes("letter") || fullText.includes("logo") || fullText.includes("text on") || fullText.includes("strap");
+
+    if (hasTextIssue) {
       pct = Math.min(pct, 60);
       matchData.match_percentage = pct;
+      if (!matchData.violation_risk || !violation.includes("high")) {
+        matchData.violation_risk = "High — text or logo detected on product";
+      }
     }
     percentageEl.textContent = pct;
     let expl = matchData.explanation || text;
