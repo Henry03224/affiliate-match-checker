@@ -372,7 +372,10 @@ Be objective and strict on authenticity. High visual match can still have High v
     if (hasTextIssue) {
       pct = Math.min(pct, 60);
       matchData.match_percentage = pct;
-      if (!matchData.violation_risk || !violation.includes("high")) {
+      // Only force High risk if there is actual text issue reported
+      const realTextIssue = (textIssues && textIssues !== "none" && textIssues !== "n/a") ||
+                            fullText.includes("added text") || fullText.includes("extra logo");
+      if (realTextIssue && (!matchData.violation_risk || !violation.includes("high"))) {
         matchData.violation_risk = "High — text or logo detected on product";
       }
     }
